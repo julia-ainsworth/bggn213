@@ -1,0 +1,238 @@
+---
+title: "Class 5: Data Visualization with GGPLOT"
+author: "Julia Ainsworth"
+format: pdf
+toc: true
+---
+
+# Our first plot
+
+R has base graphics
+
+Keyboard shortcut to insert a chunk of code: opt + cmd + i 
+
+```{r}
+plot(cars)
+```
+
+How would I plot this with ggplot2?
+
+If I hadn't installed ggplot2 yet, this would be the first step:
+```{r}
+# install.packages("ggplot2")
+```
+
+But before I use it, need to re-load (called a "library call") in every session. This is the case for every package 
+'library(ggplot2)' 
+
+```{r}
+# library(ggplot2)
+library(ggplot2)
+```
+
+Every ggplot needs at least 3 layers:
+
+- **Data** (i.e. the data.frame, here cars)
+
+- **Aes** (the aesthetic mapping of our data to what we want to plot)
+
+- **Geoms** (How we want to plot this stuff!)
+
+Simplest version of a ggplot: 
+```{r}
+ggplot(data=cars) +
+  aes(x=speed, y=dist) + 
+  geom_point()
+```
+
+Adding a trend line to our data: 
+
+```{r}
+ggplot(data=cars) +
+  aes(x=speed, y=dist) + 
+  geom_point() +
+  geom_smooth(method = lm, se = FALSE)+
+  xlab("Speed") +
+  ylab("Distance") +
+  theme_bw()
+```
+# New graph for genes upregulated/downregulated with drug treatment
+
+```{r}
+url <- "https://bioboot.github.io/bimm143_S20/class-material/up_down_expression.txt"
+genes <- read.delim(url)
+head(genes)
+
+nrow(genes)
+colnames(genes)
+ncol(genes)
+table(genes$State)
+round( table(genes$State)/nrow(genes) * 100, 2 )
+
+```
+Answers to questions: 
+Q: There are `r nrow(genes)` genes in this data set.
+
+Q: There are `r `ncol(genes)` columns in the genes data set.
+Graph of the genes up and downregulated:
+```{r}
+p <- ggplot(genes) + 
+  aes(Condition1, Condition2, col=State) +
+  geom_point()
+p
+```
+Graph showing the color changing: does p carry over? Answer: yes! 
+```{r}
+p + 
+  scale_color_manual( values =c("blue", "gray", "red")) +
+  labs(title = "Gene Expression Changes Upon Drug Treatment",
+       x = "Control (no drug)",
+       y = "Drug Treatment")
+```
+
+# gapminder extension
+
+
+```{r}
+library(gapminder)
+library(dplyr)
+url <- "https://raw.githubusercontent.com/jennybc/gapminder/master/inst/extdata/gapminder.tsv"
+
+gapminder <- read.delim(url)
+
+gapminder_2007 <- gapminder %>% filter(year==2007)
+```
+
+
+First basic scatterplot of gapminder
+```{r}
+ggplot(gapminder_2007) +
+  aes(gdpPercap, lifeExp, size= pop) +
+  geom_point(alpha = 0.5) +
+  scale_size_area(max_size = 10)
+```
+Redoing it for 1957
+
+```{r}
+gapminder_1957 <- gapminder %>% filter(year==1957)
+
+ggplot(gapminder_1957) +
+  aes(gdpPercap, lifeExp, col = continent, size = pop) +
+  geom_point(alpha = 0.7) +
+  scale_size_area(max_size = 15)
+
+```
+Facet wrapping: getting two graphs next to each other
+
+```{r}
+gapminder_1957 <- gapminder %>% filter(year==1957 | year==2007)
+
+ggplot(gapminder_1957) +
+  aes(gdpPercap, lifeExp, color = continent, size = pop)+
+  geom_point(alpha = 0.7) +
+  scale_size_area(max_size = 10) +
+  facet_wrap(~year)
+```
+
+# Bar charts
+
+```{r}
+gapminder_top5 <- gapminder %>%
+  filter(year==2007) %>%
+  arrange(desc(lifeExp)) %>%
+  top_n(5, pop)
+
+gapminder_top5
+```
+Bar chart: 
+```{r}
+ggplot(gapminder_top5) +
+  geom_col(aes(x = country, y = lifeExp))
+```
+Putting colors in: 
+
+```{r}
+ggplot(gapminder_top5) +
+  geom_col(aes(x = country, y = pop, fill = lifeExp))
+```
+
+Plotting population size by country: 
+
+```{r}
+gapminder_top5pop <- gapminder %>%
+  filter(year==2007) %>%
+  arrange(desc(pop)) %>%
+  top_n(5, pop)
+
+gapminder_top5pop
+```
+Barplot: 
+
+```{r}
+ggplot(gapminder_top5pop) +
+  aes(x=reorder(country, -pop), y=pop, fill = country)+
+  geom_col(col="gray30") +
+  guides(fill="none")
+```
+
+Flipping bar charts:
+
+```{r}
+head(USArrests)
+```
+```{r}
+USArrests$State <- rownames(USArrests)
+ggplot(USArrests) +
+  aes(x=reorder(State,Murder), y=Murder) +
+  geom_col() +
+  coord_flip()
+```
+
+Segmented bar plot: 
+
+```{r}
+ggplot(USArrests) +
+  aes(x=reorder(State,Murder), y=Murder) +
+  geom_point() +
+  geom_segment(aes(x=State,
+                   xend=State,
+                   y=0,
+                   yend=Murder), color = "blue")+
+  coord_flip()
+```
+
+# Animation: 
+
+```{r}
+#| eval: false
+library(gapminder)
+library(gganimate)
+
+# Setup nice regular ggplot of the gapminder data
+ggplot(gapminder, aes(gdpPercap, lifeExp, size = pop, colour = country)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_colour_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  scale_x_log10() +
+  # Facet by continent
+  facet_wrap(~continent) +
+  # Here comes the gganimate specific bits
+  labs(title = 'Year: {frame_time}', x = 'GDP per capita', y = 'life expectancy') +
+  transition_time(year) +
+  shadow_wake(wake_length = 0.1, alpha = FALSE)
+```
+
+# Combining plots for 10: 
+
+```{r}
+library(patchwork)
+
+p1 <- ggplot(mtcars) + geom_point(aes(mpg, disp))
+p2 <- ggplot(mtcars) + geom_boxplot(aes(gear, disp, group = gear))
+p3 <- ggplot(mtcars) + geom_smooth(aes(disp, qsec))
+p4 <- ggplot(mtcars) +geom_bar(aes(carb))
+
+(p1 | p2 |p3) / 
+  p4
+```
+
