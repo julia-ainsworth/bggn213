@@ -1,0 +1,145 @@
+---
+title: "Class 07 - Machine learning"
+author: "Julia Ainsworth"
+format: pdf
+toc: true
+editor: visual
+---
+
+#K means clustering
+
+Making up some data to cluster
+
+```{r}
+tmp <- c(rnorm(30, -3), rnorm(30,3))
+x <- cbind(x=tmp, y=rev(tmp))
+plot(x)
+```
+
+## Notes on funtions we're using today:
+
+`c()` concatenates, makes vectors `cbind()` also makes vectors `rnorm()` makes a normal distribution centered around the argument given for mean
+
+The function for k means clustering in base R is called `kmeans(x, centers = k)`. We give input data for the clustering and the number of clusters we want is "centers" (the k of kmeans)
+
+```{r}
+km <- kmeans(x, centers = 2, nstart = 20)
+km
+```
+
+To extract an element from km, see below. For clusterr size:
+
+```{r}
+km$cluster
+km
+
+```
+
+For cluster center:
+
+```{r}
+km$centers
+```
+
+Q: Plot x colored by the kmeans cluster assignment and add cluster centers as blue points. Answer: we have a vector of cluster membership, `km$cluster` which assigns colors based on whether it's in either cluster 1 or 2. To get the center, we use the `points` function which can also do `pch` = for different plotting characters. 16 is a closed circle, so it will stand out more against the open circles of our other data. `Cex` makes it stand out more; default is 1 and anything larger than 1 makes it stand out more. Note: can put NAMED arguments in any order.
+
+```{r}
+plot(x, col = km$cluster)
+points(km$centers, col ="blue", pch =16, cex = 1.4)
+```
+
+#Hierarchical Clustering
+
+The `hclust()` function performs hierarchical clustering.The advantage over `kclust()` is you don't need to tell it "k"the number of clusters ... It will take the distance matrix, d, as input, instead of the original data. This makes it more flexible.
+
+```{r}
+hc <- hclust( dist(x) )
+hc
+```
+
+```{r}
+plot(hc)
+abline(h=8, col="red")
+```
+
+To get the "main" result (cluster membership), I want to "cut" this tree to yield "branches" whose leaves are the members of the cluster.The argument h specifies where to cut
+
+```{r}
+cutree(hc, h = 8)
+```
+
+More often, we will use `cutree()` with k=2 for example. This gives us the same result; however, it specifies the number of groups rather than having us determine it by looking at the dendrogram.
+
+```{r}
+grps <- cutree(hc, k=2)
+```
+
+## Make a plot of `hclust()` results colored by the hierarchical clustering results
+
+```{r}
+plot(x, col = grps)
+```
+
+# Principal component analysis (PCA)
+
+Note: PC1 and PC2 are always orthogonal
+
+UK food data, with amended row names:
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url, row.names = 1)
+
+```
+
+Examining the data:
+
+```{r}
+dim(x)
+head(x)
+```
+
+Examining the data using bar plots: Removing barplot(beside = FALSE) changes the bars to be on top of each other. Doesn't make much sense!
+
+```{r}
+barplot(as.matrix(x), beside = T, col=rainbow(nrow(x)))
+```
+
+For Q5: A pairs plot can be a little useful; it does each possible pairwise comparison (Eng vs Wales, Eng vs Scotland, Eng vs N Ireland)
+
+```{r}
+pairs(x, col=rainbow(10), pch=16)
+```
+
+This generates a very confusing series of plots!
+
+# PCA time!!
+
+Main function in base R to do PCA is called `prcomp()` Annoying thing: it expects the transpose (it will want the countries as rows, and food/the differences to be columns) of our data as input
+
+```{r}
+pca <- prcomp(t(x))
+summary(pca)
+```
+
+Q7: The object returned by `prcomp()` has our results that include a \$x component. This is our "scores" along the PCs (i.e. the plot of our data along the new PC axis)
+
+```{r}
+pca$x
+```
+
+To get a plot of PC1 vs PC2, use the locations in the set:
+
+```{r}
+plot(pca$x[,1], pca$x[,2], xlab="PC1", ylab="PC2", )
+text(pca$x[,1], pca$x[,2], colnames(x), col=c("orange", "red", "blue", "darkgreen"))
+```
+
+# End of Wednesday's class 10/19/22
+
+Lets focus on PC1 as it accounts for \> 90% of variance
+
+```{r}
+par(mar=c(10, 3, 0.35, 0))
+barplot( pca$rotation[,1], las=2 )
+```
