@@ -1,0 +1,206 @@
+---
+title: "Class13 RNA Seq Mini Project"
+author: "Julia Ainsworth"
+format: pdf
+editor: visual
+---
+
+# Background
+
+We will do all of the following:
+
+-Read countData and colData
+-Check and fix contData if required
+-DESeq Anaysis
+-Visualization
+-Gene annotations
+-Pathway analysis
+
+### About the data: 
+The data for for hands-on session comes from GEO entry: GSE37704, which is associated with the following publication:
+
+Trapnell C, Hendrickson DG, Sauvageau M, Goff L et al. "Differential analysis of gene regulation at transcript resolution with RNA-seq". Nat Biotechnol 2013 Jan;31(1):46-53. PMID: 23222703
+
+
+# 1. Read contData and colData
+
+We need at least two things for this type of analysis: 
+
+-contData
+-colData (aka Metadata)
+```{r}
+colData <- read.csv("GSE37704_metadata.csv", row.names=1)
+colData
+```
+
+#2. Check and fix count data
+
+```{r}
+countData <-read.csv("GSE37704_featurecounts.csv", row.names =1)
+head(countData)
+```
+The first column is "length", which would mess us up. We want to get rid of it! 
+
+```{r}
+countData1 <-countData[, -1]
+head(countData1)
+```
+To check that the data lines up, we want to call on our old friend `==`, and use `all()` to make sure we aren't missing anything
+
+```{r}
+all(colnames(countData1) == rownames(colData))
+```
+
+Everything looks good so far except for zero count genes.  We will want to remove them before we test anything. 
+How to do that: Find anything that is equal to 0 across all the rows (rowSums), and then make that logical by doing an == to 0 (or the ones not equal to zero for what we want to keep), find the indices where this is true, and remove these indices
+
+```{r}
+keep.inds <- (rowSums(countData1) != 0 )
+counts <- countData1[keep.inds, ] #Data where the zero count genes have been removed 
+head(counts)
+```
+
+```{r}
+nrow(counts)
+```
+# QC wit hPCA
+
+The `prcomp()` function in base R will let us do a PCA to look at our data; check that biggest differences in expression of genes is consistent with our experimental design 
+
+```{r}
+pca <- prcomp(t(counts), scale=T)
+summary(pca)
+```
+
+Our PCA score plot (aka PC1 vs PC2)
+PCA is in our pca$x component
+```{r}
+plot(pca$x[,1], pca$x[,2], col=as.factor(colData$condition), pch =16)
+```
+
+
+
+
+
+# 3. DESeq
+
+Next: DESeq! We have to load it, and then maek the objects it requires, run DE Seq, and plot our results.
+
+```{r, message=FALSE}
+library(DESeq2)
+```
+
+Next, the inputs required for DESeq
+
+```{r}
+dds <- DESeqDataSetFromMatrix( countData = counts,
+                               colData = colData,
+                               design=~condition)
+dds <- DESeq(dds)
+
+res <- results(dds)
+head(res)
+```
+
+Plot a volcano
+```{r}
+# Making a color vector
+mycols <- rep("gray", nrow(counts))
+mycols[abs(res$log2FoldChange) > 2] <- "blue"
+
+
+mycols[res$padj > 0.05] <- "gray"
+
+plot(res$log2FoldChange, -log(res$padj), col =mycols)
+abline(v=c(-2,2))
+
+
+```
+
+# 4. Add gene annotation
+
+```{r}
+library(AnnotationDbi)
+library(org.Hs.eg.db)
+```
+
+
+Using the `mapIDs()` to add SYMBOL and ENTREZID annotations to our results
+
+```{r}
+res$symbol <- mapIds(org.Hs.eg.db,
+                     keys = rownames(counts),
+                     keytype = "ENSEMBL",
+                     column = "SYMBOL")
+```
+
+```{r}
+res$entrez <- mapIds(org.Hs.eg.db,
+                       keys = rownames(counts),
+                       keytype = "ENSEMBL",
+                       column = "ENTREZID")
+```
+
+# 5. Pathway analysis (Gene set enrichment)
+
+Using `gage()` again with KEGG and GO
+
+```{r, message = FALSE}
+library(gage)
+library(gageData)
+library(pathview)
+```
+
+What input `gage()` wants is a vector of importance - in our case that would be the log2 fold change values. This vector should have `names()` that are entrez IDs.  
+
+To get a fold change vector and set up our input so that names are set to input IDs 
+```{r}
+foldchange <- res$log2FoldChange
+names(foldchange) <- res$entrez
+```
+
+```{r}
+data(kegg.sets.hs)
+data(sigmet.idx.hs)
+kegg.sets.hs = kegg.sets.hs[sigmet.idx.hs]
+```
+
+
+And now, run `gage()` with the KEGG human set
+```{r}
+keggres = gage(foldchange, gsets =kegg.sets.hs)
+head(keggres$less, 5)
+```
+
+
+Then, to make a pretty image: 
+
+```{r}
+pathview(gene.data = foldchange, pathway.id = "hsa04110")
+```
+
+![](hsa04110.pathview.png)
+# We can do the same thing with GO
+```{r}
+data(go.sets.hs)
+data(go.subs.hs)
+
+# Focus on Biological Process subset of GO
+gobpsets = go.sets.hs[go.subs.hs$BP]
+
+gobpres = gage(foldchange, gsets=gobpsets)
+head(gobpres$less)
+```
+
+Installing reactome in the console
+```{r}
+sig_genes <- res[res$padj <= 0.05 & !is.na(res$padj), "symbol"]
+write.table(sig_genes, file="significant_genes.txt", row.names=FALSE, col.names=FALSE, quote=FALSE)
+```
+
+Brought it into reactome website and explored 
+
+
+
+
+
