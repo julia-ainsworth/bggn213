@@ -1,0 +1,116 @@
+---
+title: "Class 9: Structural Bioinformatics 1"
+author: "Julia Ainsworth"
+format: pdf
+editor: visual
+---
+
+# Viewing PDB structures using Mol*
+
+Note: to insert an image (downloaded an iris image from Mol-star) use the notation below: 
+
+![](1HSG.png)
+
+
+#Reading and working with structures in R
+
+The `bio3d`package for structural bioinformatics has lots of features for reading and working with biomolecular sequences and structures 
+
+```{r}
+library(bio3d)
+
+pdb <- read.pdb("1hsg")
+pdb
+```
+
+```{r}
+head(pdb$atom)
+```
+New structure
+```{r}
+adk <- read.pdb("6s36")
+adk
+```
+
+Normal mode analysis (NMA): a bioinformatics method for predicting functional motions
+
+```{r}
+m <- nma(adk)
+
+plot(m)
+```
+
+Making a "movie" of things moving with function `mktrj` which will then save into working directory, can then load into Mol-star to see it moving! 
+
+```{r}
+mktrj(m, file="adk_nma.pdb")
+```
+
+#Comparative analysis of all ADK structures
+
+Next, combining things that we've done before.  Get sequence of protein, search PDB using BLAST for all homologs, and then compare using PCA.
+
+First, get the sequence of ADK to search PDB database:(need to install httr package first)
+
+```{r}
+aa <- get.seq("1ake_a")
+aa
+```
+
+Next, with not breaking the BLAST server, running a BLAST for the 1ake_a sequences
+```{r}
+blast <- blast.pdb(aa)
+```
+Examine our results
+```{r}
+hits <- plot(blast)
+```
+```{r}
+head(hits)
+```
+
+
+```{r}
+pdb.annotate(hits$pdb.id)
+```
+
+To make the numbers easier to work with, we'll take the negative log of the E values that we get to find the best scoring hits
+
+```{r}
+#Download related PDB files
+files <- get.pdb(hits$pdb.id, path="pdbs", split=TRUE, gzip=TRUE)
+
+```
+
+We will align and superimpose these structures. 
+
+```{r}
+pdbs <- pdbaln(files, fit=TRUE, exefile ="msa")
+pdbs
+```
+
+View the sequence alignment
+```{r}
+#Note: I plotted this below, but when I tried to render as a pdf, I got an error saying the figure margins were too large, so I have commented it out here to make a pdf
+# plot(pdbs)
+```
+
+PCA to the rescue ... 
+```{r}
+pc.xray <- pca(pdbs)
+```
+
+```{r}
+plot(pc.xray)
+```
+
+Making a movie of the PCA result:
+```{r}
+mktrj(pc.xray, pc=1, file="pc_1.pdb")
+```
+
+
+This can also be opened in Molstar, where we can look at the animation and then export it.  
+
+
+
