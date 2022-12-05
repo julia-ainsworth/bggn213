@@ -1,0 +1,234 @@
+---
+title: "Optional Vaccination Rate Project"
+author: "Julia Ainsworth"
+format: pdf
+toc: true
+editor: visual
+---
+
+# Beginning: 
+
+Importing vaccination data for San Diego:
+
+```{r}
+vax <- read.csv(file = "covid19vaccinesbyzipcode_test.csv")
+# head(vax) note: was cluttering up pdf 
+```
+
+# Q1. What column details the total number of people fully vaccinated?
+
+A: persons_fully_vaccinated
+
+# Q2. What column details the Zip code tabulation area?
+
+A: zip_code_tabulation_area
+
+```{r}
+head(vax$as_of_date)
+tail(vax$as_of_date)
+```
+
+# Q3. What is the earliest date in this dataset?
+
+A: 2021-01-05
+
+# Q4. What is the latest date in this dataset?
+
+A: 2022-11-22
+
+```{r}
+# loaded skimr library in the console
+skimr::skim(vax)
+```
+
+# Q5. How many numeric columns are in this dataset?
+
+A: 13
+
+# Q6. Note that there are "missing values" in the dataset. How many NA values there in the persons_fully_vaccinated column?
+14921
+(code below)
+
+# Q7. What percent of persons_fully_vaccinated values are missing (to 2 significant figures)?
+.00069 %
+
+```{r}
+a <- sum( is.na(vax$persons_fully_vaccinated) ) #Question 6
+a
+b <- sum(vax$persons_fully_vaccinated, na.rm = T)
+
+(a/b) * 100 # Question 7
+
+
+```
+
+# Q8. [Optional]: Why might this data be missing?
+They may have been vaccinated originally in a different county, so not all their records are available in San Diego 
+
+
+Working with dates
+```{r}
+library(lubridate)
+
+```
+
+# Q9. How many days have passed since the last update of the dataset? 
+
+```{r}
+ today() - ymd(vax$as_of_date[nrow(vax)])
+```
+
+# Q10. How many unique dates are in the dataset (i.e. how many different dates are detailed)?
+
+```{r}
+nrow(table(vax$as_of_date))
+```
+
+
+Working with zip codes 
+```{r}
+library(zipcodeR)
+library(dplyr)
+
+```
+Using dplyr to look at San Diego vaccinations:
+
+```{r}
+sd <- filter(vax, county == "San Diego")
+
+nrow(sd)
+```
+
+Filtering for areas with population of over 10000:
+```{r}
+sd.10 <- filter(vax, county == "San Diego" &
+                age5_plus_population > 10000)
+```
+
+# Q11. How many distinct zip codes are listed for San Diego County? 
+
+```{r}
+length(unique(sd$zip_code_tabulation_area))
+```
+
+# Q12. What San Diego County Zip code area has the largest 12 + Population in this dataset? 
+```{r}
+which.max(sd$age12_plus_population)
+sd$zip_code_tabulation_area[53]
+```
+
+# Q13. What is the overall average “Percent of Population Fully Vaccinated” value for all San Diego “County” as of “2022-11-15”?
+Filtering with dplyr:
+```{r}
+sd.subset <- filter(vax, county == "San Diego" &
+                as_of_date == "2022-11-15" )
+
+mean.default(sd.subset$percent_of_population_fully_vaccinated, na.rm = T)*100
+```
+
+# Q14. Using either ggplot or base R graphics make a summary figure that shows the distribution of Percent of Population Fully Vaccinated values as of “2022-11-15”?
+
+```{r}
+hist.data <- sd.subset$percent_of_population_fully_vaccinated
+hist(hist.data, main = "Histogram of Vaccination Rates Across San Diego County",
+     xlab = "Percent of Population Fully Vaccinated on 2022-11-15")
+```
+
+Narrowing in on only La Jolla: 
+
+```{r}
+ucsd <- filter(sd, zip_code_tabulation_area=="92037")
+ucsd[1,]$age5_plus_population
+# head(ucsd)
+```
+
+# Q15. Using ggplot make a graph of the vaccination rate time course for the 92037 ZIP code area:
+```{r}
+library(ggplot2)
+plot.a <-  ggplot(ucsd) +
+  aes(x = as_of_date,
+      percent_of_population_fully_vaccinated) +
+  geom_point() +
+  geom_line(group=1) +
+  ylim(c(0,1)) + 
+  labs(x = "Date", y="Percent Vaccinated") + theme(axis.text.x = element_blank())
+plot.a
+```
+
+# # Subset to all CA areas with a population as large as 92037
+```{r}
+vax.36 <- filter(vax, age5_plus_population > 36144 &
+                    as_of_date == "2022-11-15")
+               
+# head(vax.36)
+```
+
+# Q16. Calculate the mean “Percent of Population Fully Vaccinated” for ZIP code areas with a population as large as 92037 (La Jolla) as_of_date “2022-11-15”. Add this as a straight horizontal line to your plot from above with the geom_hline() function?
+```{r}
+mean.36 <- mean(vax.36$percent_of_population_fully_vaccinated)
+mean.36
+```
+
+```{r}
+plot.a +
+  geom_hline(yintercept = mean.36, col = "red", linetype =2)
+```
+
+# Q17. What is the 6 number summary (Min, 1st Qu., Median, Mean, 3rd Qu., and Max) of the “Percent of Population Fully Vaccinated” values for ZIP code areas with a population as large as 92037 (La Jolla) as_of_date “2022-11-15”?
+
+```{r}
+summary(vax.36$percent_of_population_fully_vaccinated)
+```
+
+# Q18. Using ggplot generate a histogram of this data.
+
+```{r}
+ggplot(vax.36) + 
+  aes(percent_of_population_fully_vaccinated) + 
+  geom_histogram() + xlab("Percent Vaccinated") + ylab("Count") + ylim(0,60)
+```
+
+# Q19. Is the 92109 and 92040 ZIP code areas above or below the average value you calculated for all these above?
+```{r}
+vax %>% filter(as_of_date == "2022-11-15") %>%  
+  filter(zip_code_tabulation_area=="92040") %>%
+  select(percent_of_population_fully_vaccinated)
+
+vax %>% filter(as_of_date == "2022-11-15") %>%  
+  filter(zip_code_tabulation_area=="92109") %>%
+  select(percent_of_population_fully_vaccinated)
+
+
+```
+92040: below
+92109: below
+
+# Q20. Finally make a time course plot of vaccination progress for all areas in the full dataset with a age5_plus_population > 36144.
+
+```{r}
+vax.36.all <- filter(vax, age5_plus_population > 36144)
+# head(vax.36.all)
+mean.36.all <- mean.default(vax.36.all$percent_of_population_fully_vaccinated, na.rm = T)
+mean.36.all*100
+```
+
+```{r}
+ggplot(vax.36.all) +
+  aes(as_of_date,
+      percent_of_population_fully_vaccinated, 
+      group=zip_code_tabulation_area) +
+  geom_line(alpha=0.2, color="blue") +
+  ylim(0,1) +
+  labs(x= "Date", y= "Percent Vaccinated",
+       title="Vaccination Rates Across California",
+       subtitle="Only areas with a population above 36k are shown") +
+  geom_hline(yintercept = mean.36.all, linetype = 2)
+```
+
+# Q21. How do you feel about traveling for Thanksgiving Break and meeting for in-person class afterwards?
+I didn't travel for Thanksgiving, but I will test before coming to class. I really prefer in-person class. 
+
+
+
+
+
