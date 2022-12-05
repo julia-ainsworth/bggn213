@@ -1,0 +1,57 @@
+---
+title: "Class 11 Introduction to Genome Informatics Lab"
+author: "Julia Ainsworth"
+format: html
+editor: visual
+---
+
+
+#Section 1 Proportion of G/G in a population
+
+
+Downloaded a CSV file from Ensembl < https://www.ensembl.org/Homo_sapiens/Variation/Summary?v=rs8067378;toggle_HGVS_names=open
+
+
+Here we read this CSV file
+
+```{r}
+mxl <- read.csv("373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+head(mxl)
+```
+
+
+
+
+```{r}
+table(mxl$Genotype..forward.strand.)
+```
+Here is the number, but we want the percentage
+
+```{r}
+table(mxl$Genotype..forward.strand.)/nrow(mxl) * 100
+```
+
+
+Now, looking at the proportion in the British population GBR: 
+
+
+
+```{r}
+gbr <- read.csv("373522-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378 (1).csv")
+head(gbr)
+```
+Find proportion of G/G
+```{r}
+table(gbr$Genotype..forward.strand.)/nrow(gbr) *100
+```
+
+This variant is associated with childhood asthma and is found more frequently in gbr populations than mxl.
+
+Let's dig into this further.
+
+
+
+
+
+
+
