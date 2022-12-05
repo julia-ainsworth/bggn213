@@ -1,0 +1,66 @@
+---
+title: "Lab 6 Homework"
+author: "Julia Ainsworth"
+format: pdf
+toc: true
+editor: visual
+---
+
+Installed bio3d in the console and loaded it with library
+
+**Q6.** How would you generalize the original code above to work with any set of input
+protein structures?
+
+# Working through the problem
+## Code given
+
+```{r}
+# Can you improve this analysis code?
+library(bio3d)
+s1 <- read.pdb("4AKE")  # kinase with drug
+s2 <- read.pdb("1AKE")  # kinase no drug
+s3 <- read.pdb("1E4Y")  # kinase with drug
+s1.chainA <- trim.pdb(s1, chain="A", elety="CA")
+s2.chainA <- trim.pdb(s2, chain="A", elety="CA")
+s3.chainA <- trim.pdb(s3, chain="A", elety="CA")
+s1.b <- s1.chainA$atom$b
+s2.b <- s2.chainA$atom$b
+s3.b <- s3.chainA$atom$b
+plotb3(s1.b, sse=s1.chainA, typ="l", ylab="Bfactor")
+plotb3(s2.b, sse=s2.chainA, typ="l", ylab="Bfactor")
+plotb3(s3.b, sse=s3.chainA, typ="l", ylab="Bfactor")
+```
+
+## Breaking down code parts
+```{r}
+# Getting the information
+#Trimming the information
+s1.chainA <- trim.pdb(read.pdb("4AKE"), chain = "A", elety = "CA")
+
+#The first step (defining s1) can be combined with the second step
+
+#Plotting information
+plotb3(s1.chainA$atom$b, sse=s1.chainA, typ="l", ylab="Bfactor")
+```
+
+# Answer q6
+
+```{r}
+s.chain.A <- function(x) {
+  p <- (trim.pdb(read.pdb(x), chain = "A", elety = "CA"))
+  plotb3(p$atom$b, sse=p, type = "l", ylab = "Bfactor")
+} 
+
+#Input to the function has to be a pdb code in ""
+
+
+#Testing it out
+s.chain.A("4AKE")
+s.chain.A("1AKE")
+s.chain.A("1E4Y")
+```
+
+The code returns the graphs that look the same as the (corrected) graphs from the original code.  
+
+
+
